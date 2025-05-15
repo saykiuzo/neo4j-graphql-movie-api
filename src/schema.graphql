@@ -1,0 +1,114 @@
+type Movie {
+  tmdbId: ID! @id
+  title: String!
+  plot: String
+  poster: String
+  imdbRating: Float
+  released: String  # Formato YYYY-MM-DD
+  year: Int
+  runtime: Int
+  budget: Int
+  revenue: Int
+  url: String
+  tagline: String
+  
+  # Relacionamentos
+  actors: [Person!]! @relationship(type: "ACTED_IN", direction: IN, properties: "ActedInProperties")
+  directors: [Person!]! @relationship(type: "DIRECTED", direction: IN)
+  genres: [Genre!]! @relationship(type: "IN_GENRE", direction: OUT)
+  ratings: [User!]! @relationship(type: "RATED", direction: IN, properties: "RatedProperties")
+  
+  # Campos customizados - implementados via resolvers
+  similarMovies(limit: Int = 5): [Movie!]!
+}
+
+type Person {
+  tmdbId: ID! @id
+  name: String!
+  born: Int
+  died: Int
+  bio: String
+  url: String
+  poster: String
+  
+  # Relacionamentos
+  actedIn: [Movie!]! @relationship(type: "ACTED_IN", direction: OUT, properties: "ActedInProperties")
+  directed: [Movie!]! @relationship(type: "DIRECTED", direction: OUT)
+}
+
+type Genre {
+  name: ID! @id
+  
+  # Relacionamentos
+  movies: [Movie!]! @relationship(type: "IN_GENRE", direction: IN)
+}
+
+type User {
+  userId: ID! @id
+  name: String!
+  email: String! @unique
+  password: String!
+  
+  # Relacionamentos
+  rated: [Movie!]! @relationship(type: "RATED", direction: OUT, properties: "RatedProperties")
+  favorites: [Movie!]! @relationship(type: "HAS_FAVORITE", direction: OUT, properties: "HasFavoriteProperties")
+  
+  # Campos customizados - implementados via resolvers
+  recommendedMovies(limit: Int = 10): [Movie!]!
+}
+
+# Propriedades de relacionamentos
+type ActedInProperties @relationshipProperties {
+  role: String
+}
+
+type RatedProperties @relationshipProperties {
+  rating: Int!
+  timestamp: DateTime @timestamp(operations: [CREATE])
+}
+
+type HasFavoriteProperties @relationshipProperties {
+  createdAt: DateTime @timestamp(operations: [CREATE])
+}
+
+# Tipos de retorno para mutações personalizadas
+type RatingResult {
+  movie: Movie!
+  user: User!
+  rating: Int!
+}
+
+type RemoveRatingResult {
+  movie: Movie!
+  user: User!
+  success: Boolean!
+}
+
+type Query {
+  # Consultas customizadas
+  searchMovies(searchText: String!, limit: Int = 5): [Movie!]!
+}
+
+type GetUserRatingResult {
+  rating: Int
+}
+
+extend type Query {
+  getUserRating(userId: ID!, movieTitle: String!): GetUserRatingResult
+}
+
+# Schema para autenticação e outras mutações
+type Mutation {
+  # Autenticação
+  register(name: String!, email: String!, password: String!): AuthPayload
+  login(email: String!, password: String!): AuthPayload
+  
+  # Mutações para ratings
+  addRating(userId: ID!, movieTitle: String!, rating: Int!): RatingResult
+  removeRating(userId: ID!, movieTitle: String!): RemoveRatingResult
+}
+
+type AuthPayload {
+  token: String!
+  user: User!
+}
